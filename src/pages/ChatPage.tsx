@@ -209,11 +209,14 @@ export default function ChatPage() {
 
     try {
       const history = await loadConversation(user.id);
+      console.log("Loaded conversation history:", history.length, "messages");
+
       if (history.length > 0) {
         // Store previous history for API context
         previousHistoryRef.current = history;
 
         // Request a summary opener from the bot
+        setLoading(false);
         setStreaming(true);
         setMessages([{ role: "assistant", content: "" }]);
 
@@ -244,16 +247,18 @@ export default function ChatPage() {
           ];
         } catch (err) {
           console.error("Failed to get session summary:", err);
+          // Still keep history for context even if summary fails
           setMessages([]);
         } finally {
           setStreaming(false);
         }
+      } else {
+        setLoading(false);
       }
     } catch (err) {
       console.error("Failed to load conversation history:", err);
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [user?.id, loadDocuments, streamChat]);
 
   const handleUnlocked = useCallback(() => {

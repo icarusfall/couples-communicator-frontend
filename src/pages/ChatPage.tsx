@@ -290,7 +290,7 @@ export default function ChatPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message\u2026"
+          placeholder="What's on your mind about your relationship?"
           disabled={streaming}
           rows={1}
         />

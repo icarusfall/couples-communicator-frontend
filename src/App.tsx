@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import PairingPage from "./pages/PairingPage";
 import HomePage from "./pages/HomePage";
+import ChatPage from "./pages/ChatPage";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/pairing" element={<PairingPage />} />
               <Route path="/home" element={<HomePage />} />
+              <Route path="/chat" element={<ChatPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />

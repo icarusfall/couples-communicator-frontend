@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "./api";
+import { clearCryptoKey } from "./crypto";
 
 interface User {
   id: string;
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    clearCryptoKey();
   };
 
   return (

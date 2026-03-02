@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../auth";
 import { apiFetch } from "../api";
 import { hasCryptoKey, encrypt, decrypt } from "../crypto";
+import { saveConversation, loadConversation } from "../storage";
 import PassphraseModal from "../components/PassphraseModal";
 import DocumentPanel from "../components/DocumentPanel";
 
@@ -39,7 +40,6 @@ function extractProposal(raw: string): { display: string; proposal: string | nul
 
   const closeIdx = raw.indexOf(closeTag);
   if (closeIdx === -1) {
-    // Tag opened but not yet closed (still streaming) — hide from open tag onward
     return { display: raw.slice(0, openIdx).trimEnd(), proposal: null };
   }
 
@@ -53,6 +53,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -67,6 +68,9 @@ export default function ChatPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelMode, setPanelMode] = useState<"proposal" | "view">("view");
   const [proposalText, setProposalText] = useState<string | undefined>(undefined);
+
+  // Conversation history — previous sessions stored but not displayed
+  const previousHistoryRef = useRef<Message[]>([]);
 
   // Track raw assistant content for proposal detection
   const rawAssistantRef = useRef("");
@@ -95,12 +99,21 @@ export default function ChatPage() {
         setCoupleSalt(data.coupleSalt);
         if (!hasCryptoKey()) {
           setNeedsPassphrase(true);
+        } else {
+          // Key already cached (e.g. navigated away and back)
+          initSession();
         }
+      } else {
+        setLoading(false);
       }
-    }).catch((err) => console.error("Failed to fetch couple status:", err));
+    }).catch((err) => {
+      console.error("Failed to fetch couple status:", err);
+      setLoading(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch and decrypt shared docs after key is available
+  // Fetch shared docs
   const loadDocuments = useCallback(async () => {
     try {
       const data = await apiFetch<SharedDocResponse>("/shared-doc");
@@ -122,10 +135,131 @@ export default function ChatPage() {
     }
   }, [user?.id]);
 
+  // Stream a request to the chat API, returns the assistant's response text
+  const streamChat = useCallback(async (
+    apiMessages: Message[],
+    myDoc: string,
+    partnerDoc: string,
+    onDelta: (fullText: string) => void
+  ): Promise<string> => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messages: apiMessages,
+        myDocument: myDoc || undefined,
+        partnerDocument: partnerDoc || undefined,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to send message");
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error("No response stream");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6);
+        if (data === "[DONE]") break;
+
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) throw new Error(parsed.error);
+          if (parsed.delta) {
+            fullText += parsed.delta;
+            onDelta(fullText);
+          }
+        } catch (e) {
+          if (e instanceof SyntaxError) continue;
+          throw e;
+        }
+      }
+    }
+
+    return fullText;
+  }, []);
+
+  // Initialize session after passphrase is available
+  const initSession = useCallback(async () => {
+    await loadDocuments();
+
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const history = await loadConversation(user.id);
+      if (history.length > 0) {
+        // Store previous history for API context
+        previousHistoryRef.current = history;
+
+        // Request a summary opener from the bot
+        setStreaming(true);
+        setMessages([{ role: "assistant", content: "" }]);
+
+        const apiMessages: Message[] = [
+          ...history,
+          { role: "user", content: "[RETURNING_SESSION]" },
+        ];
+
+        try {
+          const fullText = await streamChat(
+            apiMessages,
+            "",  // Don't send docs for the summary — keep it focused
+            "",
+            (text) => {
+              const { display } = extractProposal(text);
+              setMessages([{ role: "assistant", content: display }]);
+            }
+          );
+
+          const { display } = extractProposal(fullText);
+          setMessages([{ role: "assistant", content: display }]);
+
+          // Save the returning session exchange to history
+          previousHistoryRef.current = [
+            ...history,
+            { role: "user" as const, content: "[RETURNING_SESSION]" },
+            { role: "assistant" as const, content: fullText },
+          ];
+        } catch (err) {
+          console.error("Failed to get session summary:", err);
+          setMessages([]);
+        } finally {
+          setStreaming(false);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load conversation history:", err);
+    }
+
+    setLoading(false);
+  }, [user?.id, loadDocuments, streamChat]);
+
   const handleUnlocked = useCallback(() => {
     setNeedsPassphrase(false);
-    loadDocuments();
-  }, [loadDocuments]);
+    initSession();
+  }, [initSession]);
 
   const handleApproveDocument = async (text: string) => {
     try {
@@ -150,13 +284,24 @@ export default function ChatPage() {
     setPanelOpen(false);
   };
 
+  // Save messages to IndexedDB (current session + previous history)
+  const persistMessages = useCallback(async (currentMessages: Message[]) => {
+    if (!user?.id || currentMessages.length === 0) return;
+    try {
+      const allMessages = [...previousHistoryRef.current, ...currentMessages];
+      await saveConversation(user.id, allMessages);
+    } catch (err) {
+      console.error("Failed to save conversation:", err);
+    }
+  }, [user?.id]);
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || streaming) return;
 
     const userMessage: Message = { role: "user", content: text };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
     setInput("");
     setStreaming(true);
     rawAssistantRef.current = "";
@@ -165,74 +310,55 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          messages: newMessages,
-          myDocument: myDocument || undefined,
-          partnerDocument: partnerDocument || undefined,
-        }),
-      });
+      // Send full history (previous + current) to the API
+      const apiMessages: Message[] = [
+        ...previousHistoryRef.current,
+        ...currentMessages,
+      ];
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to send message");
-      }
+      const fullText = await streamChat(
+        apiMessages,
+        myDocument,
+        partnerDocument,
+        (text) => {
+          rawAssistantRef.current = text;
+          const { display, proposal } = extractProposal(text);
 
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("No response stream");
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: "assistant", content: display };
+            return updated;
+          });
 
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6);
-          if (data === "[DONE]") break;
-
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.error) {
-              throw new Error(parsed.error);
-            }
-            if (parsed.delta) {
-              rawAssistantRef.current += parsed.delta;
-              const { display, proposal } = extractProposal(rawAssistantRef.current);
-
-              setMessages((prev) => {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: display,
-                };
-                return updated;
-              });
-
-              if (proposal) {
-                setProposalText(proposal);
-                setPanelMode("proposal");
-                setPanelOpen(true);
-              }
-            }
-          } catch (e) {
-            if (e instanceof SyntaxError) continue;
-            throw e;
+          if (proposal) {
+            setProposalText(proposal);
+            setPanelMode("proposal");
+            setPanelOpen(true);
           }
         }
+      );
+
+      // Final update with complete text
+      const { display, proposal } = extractProposal(fullText);
+      const finalMessages = [
+        ...currentMessages,
+        { role: "assistant" as const, content: display },
+      ];
+      setMessages(finalMessages);
+
+      if (proposal) {
+        setProposalText(proposal);
+        setPanelMode("proposal");
+        setPanelOpen(true);
       }
+
+      // Persist to IndexedDB — save raw text (with proposals) for full context
+      const messagesForStorage = [
+        ...currentMessages,
+        { role: "assistant" as const, content: fullText },
+      ];
+      await persistMessages(messagesForStorage);
+
     } catch (err) {
       console.error("Chat error:", err);
       setMessages((prev) => {
@@ -271,11 +397,15 @@ export default function ChatPage() {
   return (
     <div className="chat-container">
       <div className="chat-messages">
-        {messages.length === 0 && (
+        {loading ? (
+          <div className="chat-empty">
+            <p>Loading...</p>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="chat-empty">
             <p>Hi {user?.pseudonym}, what's on your mind?</p>
           </div>
-        )}
+        ) : null}
         {messages.map((msg, i) => (
           <div key={i} className={`chat-bubble chat-bubble-${msg.role}`}>
             {msg.content || (streaming && i === messages.length - 1 ? "\u2026" : "")}
@@ -291,13 +421,13 @@ export default function ChatPage() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="What's on your mind about your relationship?"
-          disabled={streaming}
+          disabled={streaming || loading}
           rows={1}
         />
         <button
           className="chat-send-btn"
           onClick={sendMessage}
-          disabled={streaming || !input.trim()}
+          disabled={streaming || loading || !input.trim()}
         >
           Send
         </button>

@@ -209,8 +209,6 @@ export default function ChatPage() {
 
     try {
       const history = await loadConversation(user.id);
-      console.log("Loaded conversation history:", history.length, "messages");
-
       if (history.length > 0) {
         // Store previous history for API context
         previousHistoryRef.current = history;

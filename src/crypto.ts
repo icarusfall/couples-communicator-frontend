@@ -37,8 +37,8 @@ export async function encrypt(plaintext: string): Promise<{ ciphertext: string; 
   );
 
   return {
-    ciphertext: btoa(String.fromCharCode(...new Uint8Array(encrypted))),
-    iv: btoa(String.fromCharCode(...iv)),
+    ciphertext: btoa(Array.from(new Uint8Array(encrypted), b => String.fromCharCode(b)).join('')),
+    iv: btoa(Array.from(iv, b => String.fromCharCode(b)).join('')),
   };
 }
 

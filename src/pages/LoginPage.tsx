@@ -32,6 +32,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
+      <Link to="/" className="back-to-home">&larr; Back to home</Link>
       <h1>Log In</h1>
       <form onSubmit={handleSubmit}>
         {error && <p className="error">{error}</p>}

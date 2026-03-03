@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#faf6f1"/>
+  <!-- Left speech bubble (terracotta) -->
+  <path d="M120 160 h120 a24 24 0 0 1 24 24 v80 a24 24 0 0 1 -24 24 h-80 l-40 36 v-36 h-24 a24 24 0 0 1 -24 -24 v-80 a24 24 0 0 1 24 -24 z" fill="#c4725a"/>
+  <!-- Right speech bubble (sage green) -->
+  <path d="M268 208 h120 a24 24 0 0 1 24 24 v80 a24 24 0 0 1 -24 24 h-24 v36 l-40 -36 h-80 a24 24 0 0 1 -24 -24 v-80 a24 24 0 0 1 24 -24 z" fill="#8a9a7b"/>
+</svg>

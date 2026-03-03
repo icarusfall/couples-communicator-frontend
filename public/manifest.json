@@ -1,0 +1,21 @@
+{
+  "name": "Couples Communicator",
+  "short_name": "Communicator",
+  "description": "AI-mediated communication tool for couples",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#c4725a",
+  "background_color": "#faf6f1",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -33,6 +33,7 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
+      <Link to="/" className="back-to-home">&larr; Back to home</Link>
       <h1>Register</h1>
       <div className="disclaimer">
         <p><strong>This is not therapy.</strong> This tool uses AI to help you reflect on communication with your partner. It may make mistakes and is not a substitute for professional support.</p>

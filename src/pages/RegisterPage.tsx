@@ -34,6 +34,10 @@ export default function RegisterPage() {
   return (
     <div className="auth-page">
       <h1>Register</h1>
+      <div className="disclaimer">
+        <p><strong>This is not therapy.</strong> This tool uses AI to help you reflect on communication with your partner. It may make mistakes and is not a substitute for professional support.</p>
+        <p>If you or someone you know is experiencing domestic abuse, contact the <a href="https://www.nationaldahelpline.org.uk/" target="_blank" rel="noopener noreferrer">National Domestic Abuse Helpline</a>: <strong>0808 2000 247</strong> (free, 24/7).</p>
+      </div>
       <form onSubmit={handleSubmit}>
         {error && <p className="error">{error}</p>}
         <label>

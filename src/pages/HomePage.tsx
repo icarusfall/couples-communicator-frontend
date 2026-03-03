@@ -31,6 +31,20 @@ export default function HomePage() {
       <Link to="/chat">
         <button style={{ marginTop: 20 }}>Start a chat session</button>
       </Link>
+      <div className="info-card">
+        <h3>Before you begin</h3>
+        <ul>
+          <li><strong>This is not therapy.</strong> It's an AI communication coach to help you reflect — not a replacement for professional counselling.</li>
+          <li><strong>AI has limitations.</strong> The bot may misunderstand context or make mistakes. Use your own judgement.</li>
+          <li><strong>Your data is encrypted.</strong> Shared documents are encrypted with a passphrase only you and your partner know. Conversation history is stored locally on your device.</li>
+        </ul>
+        <p className="info-card-resources">
+          If you or someone you know is experiencing domestic abuse:<br />
+          <a href="https://www.nationaldahelpline.org.uk/" target="_blank" rel="noopener noreferrer">National Domestic Abuse Helpline</a>: <strong>0808 2000 247</strong> (free, 24/7)<br />
+          <a href="https://www.refuge.org.uk/" target="_blank" rel="noopener noreferrer">Refuge</a> — support for women and children
+        </p>
+      </div>
+      <Link to="/account" className="account-link">Account settings</Link>
     </div>
   );
 }

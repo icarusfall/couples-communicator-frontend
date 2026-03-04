@@ -26,6 +26,9 @@ export default function PublicLayout() {
           <Link to="/ethics">Ethics</Link>
           <Link to="/login">Sign In</Link>
         </div>
+        <div className="public-footer-contact">
+          Questions or issues? Email <a href="mailto:help@buildabridge.app">help@buildabridge.app</a>
+        </div>
       </footer>
     </div>
   );

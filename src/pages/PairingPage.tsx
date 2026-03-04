@@ -23,7 +23,6 @@ interface JoinCoupleResponse {
 export default function PairingPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<CoupleStatus | null>(null);
-  const [displayCode, setDisplayCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,11 +50,10 @@ export default function PairingPage() {
     setError("");
     setSubmitting(true);
     try {
-      const data = await apiFetch<CreateCoupleResponse>("/couple/create", {
+      await apiFetch<CreateCoupleResponse>("/couple/create", {
         method: "POST",
       });
-      setDisplayCode(data.pairingCode);
-      setStatus({ paired: true, coupleId: data.coupleId, waitingForPartner: true });
+      navigate("/home");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -90,20 +88,10 @@ export default function PairingPage() {
 
   if (loading) return <div className="page-center"><p>Loading...</p></div>;
 
-  // Waiting for partner to join
-  if (status?.waitingForPartner || displayCode) {
-    return (
-      <div className="page-center">
-        <h2>Waiting for your partner</h2>
-        <p>Share this code with your partner:</p>
-        <div className="pairing-code">{displayCode || "..."}</div>
-        <p className="hint">The code expires in 24 hours.</p>
-        <button onClick={fetchStatus} disabled={submitting}>
-          Refresh status
-        </button>
-        {error && <p className="error">{error}</p>}
-      </div>
-    );
+  // Waiting for partner — redirect to home (they can chat while waiting)
+  if (status?.waitingForPartner) {
+    navigate("/home");
+    return null;
   }
 
   // Not in a couple yet

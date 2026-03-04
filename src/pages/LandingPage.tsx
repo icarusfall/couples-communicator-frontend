@@ -15,6 +15,12 @@ export default function LandingPage() {
         </Link>
       </div>
 
+      <div className="beta-notice">
+        <strong>Early access</strong> — This project is in beta. Use of the AI
+        coach is currently free, but we'll need to cap the number of users and
+        may introduce a small charge once we reach capacity.
+      </div>
+
       <div className="landing-cards">
         <div className="landing-card">
           <h3>Private conversations</h3>

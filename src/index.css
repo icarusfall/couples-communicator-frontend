@@ -618,6 +618,23 @@ button:disabled {
   color: var(--color-primary);
 }
 
+/* Install prompt */
+.install-prompt {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f0f4ed;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--color-text);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.install-prompt button {
+  margin-top: 8px;
+}
+
 .account-link {
   display: inline-block;
   margin-top: 16px;

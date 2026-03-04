@@ -11,10 +11,17 @@ interface CoupleStatus {
   pairingCode?: string;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export default function HomePage() {
   const { user } = useAuth();
   const [partnerName, setPartnerName] = useState<string | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showIosHint, setShowIosHint] = useState(false);
 
   useEffect(() => {
     apiFetch<CoupleStatus>("/couple/status")
@@ -28,6 +35,36 @@ export default function HomePage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    // Already installed as PWA — don't show install prompt
+    if (window.matchMedia("(display-mode: standalone)").matches) return;
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+
+    // iOS Safari doesn't fire beforeinstallprompt — detect and show manual hint
+    const ua = navigator.userAgent;
+    const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+    if (isIos && isSafari) {
+      setShowIosHint(true);
+    }
+
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") {
+      setInstallPrompt(null);
+    }
+  };
 
   return (
     <div className="page-center">
@@ -55,6 +92,17 @@ export default function HomePage() {
           <a href="https://www.refuge.org.uk/" target="_blank" rel="noopener noreferrer">Refuge</a> — support for women and children
         </p>
       </div>
+      {installPrompt && (
+        <div className="install-prompt">
+          <p>Add this app to your home screen for easy access.</p>
+          <button className="btn-secondary" onClick={handleInstall}>Install app</button>
+        </div>
+      )}
+      {showIosHint && !installPrompt && (
+        <div className="install-prompt">
+          <p>To install this app, tap the share button in Safari, then "Add to Home Screen".</p>
+        </div>
+      )}
       <Link to="/account" className="account-link">Account settings</Link>
     </div>
   );

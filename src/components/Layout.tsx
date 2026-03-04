@@ -11,7 +11,7 @@ export default function Layout() {
   return (
     <div className="app-layout">
       <header className="app-header">
-        <span className="app-name">Couples Communicator</span>
+        <span className="app-name">Build A Bridge</span>
         <div className="header-actions">
           <button className="quick-exit-btn" onClick={quickExit}>
             Exit

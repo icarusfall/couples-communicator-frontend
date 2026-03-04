@@ -1,6 +1,6 @@
 {
-  "name": "Couples Communicator",
-  "short_name": "Communicator",
+  "name": "Build A Bridge",
+  "short_name": "Bridge",
   "description": "AI-mediated communication tool for couples",
   "start_url": "/",
   "display": "standalone",

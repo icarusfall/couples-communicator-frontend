@@ -5,7 +5,7 @@ export default function PublicLayout() {
     <div className="public-layout">
       <header className="public-header">
         <Link to="/" className="public-header-brand">
-          Couples Communicator
+          Build A Bridge
         </Link>
         <nav className="public-nav">
           <Link to="/how-it-works">How It Works</Link>

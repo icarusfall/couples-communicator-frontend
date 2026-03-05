@@ -1,13 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../auth";
-import { ApiError } from "../api";
+import { Link } from "react-router-dom";
+import { apiFetch, ApiError } from "../api";
 
-export default function LoginPage() {
-  const { login } = useAuth();
-  const navigate = useNavigate();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -17,8 +14,11 @@ export default function LoginPage() {
     setSubmitting(true);
 
     try {
-      await login(email, password);
-      navigate("/pairing");
+      await apiFetch("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      setSubmitted(true);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -30,10 +30,24 @@ export default function LoginPage() {
     }
   };
 
+  if (submitted) {
+    return (
+      <div className="auth-page">
+        <Link to="/" className="back-to-home">&larr; Back to home</Link>
+        <h1>Check Your Email</h1>
+        <p>If an account exists with that email, we've sent a password reset link. It expires in 1 hour.</p>
+        <p className="auth-link">
+          <Link to="/login">Back to login</Link>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="auth-page">
       <Link to="/" className="back-to-home">&larr; Back to home</Link>
-      <h1>Log In</h1>
+      <h1>Forgot Password</h1>
+      <p>Enter your email and we'll send you a link to reset your password.</p>
       <form onSubmit={handleSubmit}>
         {error && <p className="error">{error}</p>}
         <label>
@@ -46,25 +60,12 @@ export default function LoginPage() {
             autoComplete="email"
           />
         </label>
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </label>
         <button type="submit" disabled={submitting}>
-          {submitting ? "Logging in..." : "Log In"}
+          {submitting ? "Sending..." : "Send Reset Link"}
         </button>
       </form>
       <p className="auth-link">
-        <Link to="/forgot-password">Forgot your password?</Link>
-      </p>
-      <p className="auth-link">
-        Don't have an account? <Link to="/register">Register</Link>
+        Remember your password? <Link to="/login">Log in</Link>
       </p>
     </div>
   );

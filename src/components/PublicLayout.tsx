@@ -11,6 +11,7 @@ export default function PublicLayout() {
           <Link to="/how-it-works">How It Works</Link>
           <Link to="/privacy">Privacy</Link>
           <Link to="/ethics">Ethics</Link>
+          <Link to="/login">Log In</Link>
           <Link to="/register" className="public-nav-cta">
             Get Started
           </Link>

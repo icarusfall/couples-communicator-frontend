@@ -126,6 +126,15 @@ export default function PairingPage() {
           </button>
         </div>
       </div>
+
+      <div className="divider">or</div>
+
+      <div className="pairing-section">
+        <p>Just want to explore first? You can set up partner linking later.</p>
+        <button onClick={() => navigate("/home")} className="button-secondary">
+          Skip for now and start chatting
+        </button>
+      </div>
     </div>
   );
 }
